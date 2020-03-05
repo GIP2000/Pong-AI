@@ -5,7 +5,6 @@ import math
 import neat
 SIZE = SCREEN_WIDTH,SCREEN_HEIGHT = 1000,1000
 
-
 class Paddle: 
     WIDTH = 10
     HEIGHT = 50
@@ -87,7 +86,6 @@ class Ball:
 
 
 def main_game(genomes,config):
-    
     pygame.init()
     WIN = pygame.display.set_mode(SIZE)
     clock = pygame.time.Clock()
@@ -101,10 +99,10 @@ def main_game(genomes,config):
     genomes[1][1].fitness = 0
     
     def activate(player1,ball,nn):
-        output = nn.activate((player1.y,player1.x,ball.x,ball.y))[0]
+        output = nn.activate((player1.x,player1.y,ball.x,ball.y))[0]
         if output >= 0 and output <= 1/3:
             player1.up()
-        elif output >= 1/4 and output <= 2/3:
+        elif output >= 1/3 and output <= 2/3:
             player1.down()
 
 
@@ -117,16 +115,16 @@ def main_game(genomes,config):
         WIN.fill((0,0,0))
         lose = ball.move()
         if lose == 1:
-            genomes[0][1] = None # genomes[0][1].fitness -=50
+            genomes[0][1].fitness -=500  #genomes[0] = None    
             running = False
         elif lose == 2:
-            genomes[1][1] = None # genomes[1][1].fitness -=50
+            genomes[1][1].fitness -=500   # genomes[1] = None  
             running = False
         
         collide,who_collide = ball.check_collision(player1,player2)
         if collide:
-            print(who_collide)
-            genomes[who_collide][1].fitness +=1
+            # print(who_collide)
+            genomes[who_collide][1].fitness +=100
 
 
         player1.draw(WIN)
@@ -135,6 +133,8 @@ def main_game(genomes,config):
         
         
         pygame.display.flip()
+    
+    print(genomes)
 
 
 
