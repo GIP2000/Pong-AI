@@ -2,8 +2,13 @@ import pygame
 from pygame.locals import *
 import os
 import math
-import neat
+import random 
+from QLeanring import QLearningHandler as QL
+
 SIZE = SCREEN_WIDTH,SCREEN_HEIGHT = 1000,1000
+
+global_reward1 = 0
+global_reward2 = 0
 
 class Paddle: 
     WIDTH = 10
@@ -14,7 +19,11 @@ class Paddle:
         self.x = 50 if is_player_1 else SCREEN_WIDTH-50
         self.y = round(SCREEN_HEIGHT/2)
         
-        
+    def action(self,action):
+        if action == 1:
+            self.up()
+        elif action == 2:
+            self.down()
 
     def up(self):
         self.y-= 10 if self.y - 10 >= 0 else 0 
@@ -40,7 +49,9 @@ class Ball:
     def __init__(self):
         self.x = round(SCREEN_WIDTH/2)
         self.y  = round(SCREEN_HEIGHT/2)
-        self.angle = 0
+        self.angle = 0 if random.randint(1,2) == 1 else math.pi
+        # self.angle = math.pi 
+        # self.angle = 0
 
     def draw(self,win):
         win.blit(Ball.IMG,(self.x,self.y))
@@ -72,6 +83,8 @@ class Ball:
 
             if status:
                 self.angle = (self.y - Paddle.HEIGHT/2)/(Paddle.HEIGHT/2)*math.pi/4
+                if self.x <=60:
+                    self.angle += math.pi 
                 return True
             else:
                 return False
@@ -85,77 +98,91 @@ class Ball:
 
 
 
-def main_game(genomes,config):
-    pygame.init()
-    WIN = pygame.display.set_mode(SIZE)
-    clock = pygame.time.Clock()
+def main_game(Q1,Q2,train=False,episode=0,show_often=1):
+    
+    render = not train or episode%show_often == 0
+    global global_reward1
+    global global_reward2
+
+    if render:
+        pygame.init()
+        WIN = pygame.display.set_mode(SIZE)
+        clock = pygame.time.Clock()
     running = True
     player1,player2 = Paddle(True), Paddle(False)
     ball = Ball()
 
-    neat1 = neat.nn.FeedForwardNetwork.create(genomes[0][1],config)
-    neat2 = neat.nn.FeedForwardNetwork.create(genomes[1][1],config)
-    genomes[0][1].fitness = 0
-    genomes[1][1].fitness = 0
-    
-    def activate(player1,ball,nn):
-        output = nn.activate((player1.x,player1.y,ball.x,ball.y))[0]
-        if output >= 0 and output <= 1/3:
-            player1.up()
-        elif output >= 1/3 and output <= 2/3:
-            player1.down()
-
+    state1 = [ball.x,ball.y,player1.y]
+    state2 = [ball.x,ball.y,player2.y]
 
     while running:
-        clock.tick(30)
-                     
-        activate(player1,ball,neat1)
-        activate(player2,ball,neat2)
+        if render:
+            clock.tick(30)
 
-        WIN.fill((0,0,0))
-        lose = ball.move()
-        if lose == 1:
-            genomes[0][1].fitness -=500  #genomes[0] = None    
-            running = False
-        elif lose == 2:
-            genomes[1][1].fitness -=500   # genomes[1] = None  
-            running = False
+        action1 = Q1.choose_action(state1)
+        action2 = Q2.choose_action(state2)
+        player1.action(action1)
+        player2.action(action2)
+
+        new_state1 = [ball.x,ball.y,player1.y] 
+        new_state2 = [ball.x,ball.y,player2.y] 
+
+        
+
         
         collide,who_collide = ball.check_collision(player1,player2)
+        
+
+        
         if collide:
-            # print(who_collide)
-            genomes[who_collide][1].fitness +=100
+            if who_collide == 0:
+                reward1 = 1
+                reward2 = 0
+            else:
+                reward2 = 1
+                reward1 = 0
+        else:
+            reward2 = 0
+            reward1 = 0
 
+        Q1.update_q(state1,new_state1,action1,reward1)
+        Q2.update_q(state2,new_state2,action2,reward2)
 
-        player1.draw(WIN)
-        player2.draw(WIN)
-        ball.draw(WIN)
+        global_reward1+=reward1
+        global_reward2+=reward2
+
         
+        lose = ball.move()
+        if lose == 1:
+            Q2.winning_move(state2,action2)  # idk if this is actually good for my use case 
+            running = False
+        elif lose == 2:
+            Q1.winning_move(state1,action1)
+            running = False
         
-        pygame.display.flip()
+        if render:
+            WIN.fill((0,0,0))
+            player1.draw(WIN)
+            player2.draw(WIN)
+            ball.draw(WIN)
+        
+        if render:
+            pygame.display.flip()
+
+    return Q1,Q2
     
-    print(genomes)
 
-
-
-def run(config_file):
-    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_file)   
     
-    p = neat.Population(config)
-
-    p.add_reporter(neat.StdOutReporter(True))
-    stats = neat.StatisticsReporter()
-    p.add_reporter(stats)
-
-     # Run for up to 50 generations.
-    winner = p.run(main_game, 50)
-
-    # show final stats
-    print('\nBest genome:\n{!s}'.format(winner))
 
 if __name__ == "__main__":
-    local_dir = os.path.dirname(__file__)
-    config_path = os.path.join(local_dir,"config-feedforward.txt")
-    run(config_path)
+    episodes = 100000
+    step = 1000
+    Q1 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=False)
+    Q2 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=False)
+    for i in range(episodes):
+        Q1,Q2 = main_game(Q1,Q2,True,i,step)
+        if i%step == 0:
+            print("Gen {} reward1 = {} reward2 = {}".format(i,global_reward1,global_reward2))
+    
+
+    
