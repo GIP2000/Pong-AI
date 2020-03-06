@@ -1,5 +1,4 @@
 import numpy as np 
-import json
 
 class QLearningHandler:
     def __init__(self,
@@ -15,7 +14,7 @@ class QLearningHandler:
                 use_epsilon=True,
                 min_reward=0,
                 max_reward=1):
-                
+
         self.actions = [i for i in range(actions)]
         self.min_value = min_values
         self.discrete_observation_size = discrete_observation_size
@@ -30,6 +29,7 @@ class QLearningHandler:
         self.end_epsilon_decaying = episodes // 2
         self.start_epsilon_decaying = start_epsilon_decaying
         self.use_epsilon = use_epsilon
+        self.episode = 0
 
     
     def get_discrete_state(self,state):
@@ -56,8 +56,9 @@ class QLearningHandler:
         self.q_table[discrete_state + (action,)] = new_q
     
     def epsilon_decay(self):
-        if end_epsilon_decaying >= episode >= start_epsilon_decaying:
-            epsilon -= epsilon_decay_value
+        if self.end_epsilon_decaying >= self.episode >= self.start_epsilon_decaying:
+            self.epsilon -= self.epsilon_decay_value
+            self.episodes+=1
         
     def winning_move(self,state,action):
         discrete_state = self.get_discrete_state(state)

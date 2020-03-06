@@ -50,8 +50,7 @@ class Ball:
         self.x = round(SCREEN_WIDTH/2)
         self.y  = round(SCREEN_HEIGHT/2)
         self.angle = 0 if random.randint(1,2) == 1 else math.pi
-        # self.angle = math.pi 
-        # self.angle = 0
+
 
     def draw(self,win):
         win.blit(Ball.IMG,(self.x,self.y))
@@ -102,7 +101,7 @@ def main_game(Q1,Q2,train=False,episode=0,show_often=1):
     
     render = not train or episode%show_often == 0
     global global_reward1
-    global global_reward2
+    global global_reward2  # added as a flag to see if it will shed insight 
 
     if render:
         pygame.init()
@@ -125,14 +124,9 @@ def main_game(Q1,Q2,train=False,episode=0,show_often=1):
         player2.action(action2)
 
         new_state1 = [ball.x,ball.y,player1.y] 
-        new_state2 = [ball.x,ball.y,player2.y] 
-
-        
-
-        
+        new_state2 = [ball.x,ball.y,player2.y]     
+       
         collide,who_collide = ball.check_collision(player1,player2)
-        
-
         
         if collide:
             if who_collide == 0:
@@ -177,12 +171,15 @@ def main_game(Q1,Q2,train=False,episode=0,show_often=1):
 if __name__ == "__main__":
     episodes = 100000
     step = 1000
-    Q1 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=False)
-    Q2 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=False)
+    Q1 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=True)
+    Q2 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=True)
     for i in range(episodes):
         Q1,Q2 = main_game(Q1,Q2,True,i,step)
         if i%step == 0:
             print("Gen {} reward1 = {} reward2 = {}".format(i,global_reward1,global_reward2))
+        Q1.epsilon_decay()
+        Q2.epsilon_decay()
+
     
 
     
