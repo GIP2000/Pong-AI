@@ -132,8 +132,8 @@ def main_game(Q1,train=False,episode=0,show_often=1):
             clock.tick(30)
 
         action1 = Q1.choose_action(state1)
-        if action1 != 0:
-            print("MOVED")
+        # if action1 != 0:
+        #     print("MOVED")
         # action2 = Q2.choose_action(state2)
         player1.action(action1)
         player2.y = ball.y
@@ -191,7 +191,7 @@ def main_game(Q1,train=False,episode=0,show_often=1):
 if __name__ == "__main__":
     episodes = 100000
     step = 1000
-    Q1 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=False,min_reward=-5,max_reward=1)
+    Q1 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=True,min_reward=-5,max_reward=1)
     # Q2 = QL(3,[1000,1000,1000],[0,0,0],[10,10,10],episodes=episodes,use_epsilon=True,min_reward=0,max_reward=1)
     for i in range(episodes):
         Q1 = main_game(Q1,True,i,step)
