@@ -12,14 +12,15 @@ class QLearningHandler:
                 episodes=25000,
                 start_epsilon_decaying=1,
                 use_epsilon=True,
-                min_reward=0,
-                max_reward=1):
+                min_reward=-2,
+                max_reward=0):
 
         self.actions = [i for i in range(actions)]
-        self.min_value = min_values
-        self.discrete_observation_size = discrete_observation_size
-        self.size = [int((max_values[i]- min_values[i])/discrete_observation_size[i]) for i in range(len(max_values))] + [actions]
-        self.q_table = np.random.uniform(low=int(min_reward),high=int(max_reward),size=self.size)
+        self.min_value = np.asarray(min_values)
+        max_values = np.asarray(max_values)
+        self.discrete_observation_size = np.asarray(discrete_observation_size)
+        self.size = (max_values - self.min_value)/self.discrete_observation_size
+        self.q_table = np.random.uniform(low=int(min_reward),high=int(max_reward),size=(self.discrete_observation_size + [len(self.actions)]))
         self.learning_rate = learning_rate
         self.discount = discount
         self.epsilon = epsilon
@@ -33,8 +34,8 @@ class QLearningHandler:
 
     
     def get_discrete_state(self,state):
-        discrete_state = [int((state[i] - self.min_value[i])/(self.discrete_observation_size[i])) for i in range(len(state))]
-        return tuple(discrete_state)
+        discrete_state = (np.asarray(state) - self.min_value)/self.size
+        return tuple(discrete_state.astype(np.int))
     
     def choose_action(self,state):
         """
@@ -51,9 +52,9 @@ class QLearningHandler:
         discrete_state = self.get_discrete_state(state)
         next_discrete_state = self.get_discrete_state(next_state)
         max_future_q = np.max(self.q_table[next_discrete_state])
-        current_q = self.q_table[discrete_state + (action,)]
+        current_q = self.q_table[discrete_state + (action)]
         new_q = (1 - self.learning_rate) * current_q + self.learning_rate * (reward + self.discount * max_future_q)
-        self.q_table[discrete_state + (action,)] = new_q
+        self.q_table[discrete_state + (action)] = new_q
     
     def epsilon_decay(self):
         if self.end_epsilon_decaying >= self.episode >= self.start_epsilon_decaying:
@@ -62,7 +63,7 @@ class QLearningHandler:
         
     def winning_move(self,state,action):
         discrete_state = self.get_discrete_state(state)
-        self.q_table[discrete_state + (action, )] = 0 
+        self.q_table[discrete_state + (action )] = 0 
 
     
     
